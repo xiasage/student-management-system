@@ -1,33 +1,48 @@
-const express = require('express');
-const mysql = require('mysql2');
-const cors = require('cors');
+const express = require('express')
+const mysql = require('mysql2/promise')
+const cors = require('cors')
 
-const app = express();
-app.use(cors());
-app.use(express.json());
+const app = express()
+app.use(cors())
+app.use(express.json())
 
-// 创建数据库连接池
-const pool = mysql.createPool({
+// 数据库连接配置
+const dbConfig = {
   host: 'localhost',
   user: 'root',
-  password: 'password',
-  database: 'student_management',
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0
-});
+  password: '',
+  database: 'student_management'
+}
 
-// 测试数据库连接
-pool.getConnection((err, connection) => {
-  if (err) {
-    console.error('数据库连接失败:', err);
-  } else {
-    console.log('数据库连接成功');
-    connection.release();
+// 获取所有学生
+app.get('/api/students', async (req, res) => {
+  try {
+    const connection = await mysql.createConnection(dbConfig)
+    const [rows] = await connection.query('SELECT * FROM students')
+    res.json(rows)
+    connection.end()
+  } catch (error) {
+    res.status(500).json({ error: error.message })
   }
-});
+})
 
-const PORT = 5000;
+// 添加学生
+app.post('/api/students', async (req, res) => {
+  try {
+    const { student_id, name, gender, age, class: className } = req.body
+    const connection = await mysql.createConnection(dbConfig)
+    const [result] = await connection.query(
+      'INSERT INTO students (student_id, name, gender, age, class) VALUES (?, ?, ?, ?, ?)',
+      [student_id, name, gender, age, className]
+    )
+    res.status(201).json({ id: result.insertId })
+    connection.end()
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+const PORT = process.env.PORT || 5000
 app.listen(PORT, () => {
-  console.log(`服务器运行在 http://localhost:${PORT}`);
-});
+  console.log(`Server running on port ${PORT}`)
+})
